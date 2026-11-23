@@ -1,0 +1,2082 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Phạm Ngọc Tính — Portfolio</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    /* Biến màu chủ đạo và thiết kế giao diện tối */
+    :root {
+      --bg: #080a0f;
+      --bg-elev: #0f131c;
+      --card: rgba(15, 19, 28, 0.88);
+      --card-hover: rgba(22, 28, 42, 0.96);
+      --border: rgba(255, 255, 255, 0.08);
+      --border-strong: rgba(56, 189, 248, 0.35);
+      --text: #f3f6fb;
+      --muted: #94a3b8;
+      --accent: #38bdf8;
+      --accent-red: #f43f5e;
+      --accent-2: #818cf8;
+      --green: #22c55e;
+      --radius: 16px;
+      --maxw: 1040px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      font-family: "Inter", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background:
+        radial-gradient(circle at 18% 12%, rgba(56, 189, 248, 0.1), transparent 38%),
+        radial-gradient(circle at 82% 20%, rgba(244, 63, 94, 0.07), transparent 40%),
+        var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      overflow-x: hidden;
+      min-height: 100vh;
+    }
+
+    body.intro-lock {
+      overflow: hidden;
+    }
+
+    /* Thanh tiến trình cuộn trang ở mép trên */
+    #assembly-progress {
+      position: fixed;
+      top: 0;
+      left: 0;
+      height: 2px;
+      width: 0%;
+      z-index: 120;
+      background: linear-gradient(90deg, #38bdf8, #f43f5e, #22c55e);
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.8);
+      pointer-events: none;
+    }
+
+    /* Lớp phủ nền tối ban đầu làm nổi bật lõi hạt hội tụ */
+    #intro-dark-veil {
+      position: fixed;
+      inset: 0;
+      z-index: 90;
+      background: radial-gradient(circle at 50% 45%, rgba(8, 10, 15, 0.72), rgba(4, 6, 10, 0.96));
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.65s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    body.intro-dark #intro-dark-veil {
+      opacity: 1;
+    }
+
+    /* Canvas toàn màn hình vẽ đường gióng Blueprint, chốt góc, nhãn px và hạt mở màn */
+    #blueprint-canvas {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 95;
+      pointer-events: none;
+    }
+
+    /* Lớp thẻ kỹ thuật bay nhẹ trên nền */
+    #ambient-stage {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 1;
+      overflow: hidden;
+      transition: opacity 0.35s ease;
+    }
+
+    .floating-chip {
+      position: absolute;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 8px;
+      border-radius: 7px;
+      background: rgba(15, 23, 42, 0.55);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: rgba(226, 232, 240, 0.65);
+      font-family: "JetBrains Mono", monospace;
+      font-size: 10px;
+      font-weight: 600;
+      will-change: transform;
+    }
+
+    .floating-chip i {
+      width: 6px;
+      height: 6px;
+      border-radius: 2px;
+      display: inline-block;
+    }
+
+    /* Hiệu ứng kéo giãn đàn hồi & lắp ráp từng thành phần giao diện */
+    .bp-node {
+      position: relative;
+      opacity: 0;
+      transform: translate3d(var(--tx, 0px), var(--ty, 24px), 0) scale(var(--sx, 0.72), var(--sy, 1.32));
+      clip-path: inset(0 100% 0 0);
+      will-change: transform, opacity, clip-path;
+    }
+
+    .bp-node::after {
+      content: "";
+      position: absolute;
+      inset: -3px;
+      border: 1px dashed rgba(56, 189, 248, 0.55);
+      border-radius: inherit;
+      pointer-events: none;
+      opacity: 0;
+    }
+
+    body.bp-active .bp-node.hero-node {
+      animation: bpStretchAssemble var(--dur, 1.35s) cubic-bezier(0.16, 1, 0.3, 1) var(--delay, 0ms) forwards;
+    }
+
+    body.bp-active .bp-node.hero-node::after {
+      animation: bpFrameFlash var(--dur, 1.35s) ease-out var(--delay, 0ms) forwards;
+    }
+
+    body.bp-active .bp-node.scroll-node.is-assembled {
+      animation: bpStretchAssemble 1.05s cubic-bezier(0.16, 1, 0.3, 1) var(--delay, 0ms) forwards;
+    }
+
+    body.bp-active .bp-node.scroll-node.is-assembled::after {
+      animation: bpFrameFlash 1.05s ease-out var(--delay, 0ms) forwards;
+    }
+
+    body.no-motion .bp-node {
+      opacity: 1 !important;
+      transform: none !important;
+      clip-path: none !important;
+      animation: none !important;
+    }
+
+    body.no-motion .bp-node::after {
+      display: none !important;
+    }
+
+    @keyframes bpStretchAssemble {
+      0% {
+        opacity: 0;
+        transform: translate3d(var(--tx, -32px), var(--ty, 22px), 0) scale(var(--sx, 0.68), var(--sy, 1.38));
+        clip-path: inset(0 100% 0 0);
+        filter: drop-shadow(0 0 14px rgba(56, 189, 248, 0.85));
+      }
+      32% {
+        opacity: 0.95;
+        transform: translate3d(calc(var(--tx, -32px) * -0.22), calc(var(--ty, 22px) * -0.18), 0) scale(1.08, 0.92);
+        clip-path: inset(0 28% 0 0);
+        filter: drop-shadow(0 0 10px rgba(244, 63, 94, 0.65));
+      }
+      66% {
+        opacity: 1;
+        transform: translate3d(4px, -3px, 0) scale(0.97, 1.03);
+        clip-path: inset(0 4% 0 0);
+        filter: drop-shadow(0 0 6px rgba(56, 189, 248, 0.45));
+      }
+      100% {
+        opacity: 1;
+        transform: translate3d(0, 0, 0) scale(1, 1);
+        clip-path: inset(0 0% 0 0);
+        filter: none;
+      }
+    }
+
+    @keyframes bpFrameFlash {
+      0% {
+        opacity: 0.95;
+        border-color: rgba(56, 189, 248, 0.85);
+      }
+      55% {
+        opacity: 0.7;
+        border-color: rgba(244, 63, 94, 0.65);
+      }
+      100% {
+        opacity: 0;
+      }
+    }
+
+    /* Đường mạch phân tách giữa các mục */
+    .circuit-line {
+      height: 1px;
+      width: 100%;
+      margin: 16px 0;
+      background: linear-gradient(90deg, transparent, rgba(56, 189, 248, 0.5), rgba(244, 63, 94, 0.45), transparent);
+      transform-origin: left center;
+      transform: scaleX(var(--line-scale, 0));
+      opacity: var(--line-scale, 0);
+    }
+
+    /* Thanh điều hướng cố định */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 30;
+      backdrop-filter: blur(14px);
+      background: rgba(8, 10, 15, 0.8);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .nav-wrap {
+      max-width: var(--maxw);
+      margin: 0 auto;
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 700;
+      font-size: 15px;
+      text-decoration: none;
+      color: var(--text);
+    }
+
+    .brand-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 999px;
+      background: var(--green);
+      box-shadow: 0 0 12px var(--green);
+    }
+
+    nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 18px;
+    }
+
+    nav a {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 13.5px;
+      transition: color 0.2s ease;
+    }
+
+    nav a:hover {
+      color: var(--text);
+    }
+
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 14px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--bg-elev);
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      text-decoration: none;
+      transition: transform 0.18s ease, border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .btn:hover {
+      transform: translateY(-1px);
+      border-color: var(--border-strong);
+      background: #151b28;
+      box-shadow: 0 6px 20px rgba(56, 189, 248, 0.16);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, rgba(56, 189, 248, 0.2), rgba(129, 140, 248, 0.2));
+      border-color: rgba(56, 189, 248, 0.38);
+    }
+
+    .btn-active-scroll {
+      background: linear-gradient(135deg, rgba(34, 197, 94, 0.24), rgba(56, 189, 248, 0.22));
+      border-color: rgba(34, 197, 94, 0.55);
+      box-shadow: 0 0 16px rgba(34, 197, 94, 0.22);
+    }
+
+    /* Hộp thông báo trạng thái */
+    .toast-msg {
+      position: fixed;
+      bottom: 22px;
+      right: 22px;
+      z-index: 60;
+      padding: 10px 16px;
+      border-radius: 12px;
+      background: rgba(15, 19, 28, 0.96);
+      border: 1px solid rgba(56, 189, 248, 0.38);
+      color: var(--text);
+      font-size: 13px;
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
+      opacity: 0;
+      transform: translateY(12px);
+      pointer-events: none;
+      transition: opacity 0.25s ease, transform 0.25s ease;
+    }
+
+    .toast-msg.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    main {
+      position: relative;
+      z-index: 2;
+      max-width: var(--maxw);
+      margin: 0 auto;
+      padding: 40px 20px 88px;
+    }
+
+    /* Khối giới thiệu Hero */
+    .hero {
+      position: relative;
+      display: grid;
+      grid-template-columns: 156px 1fr;
+      gap: 28px;
+      align-items: center;
+      padding: 28px;
+      border-radius: 22px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+    }
+
+    .avatar-box {
+      width: 156px;
+      height: 156px;
+      border-radius: 18px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      background: linear-gradient(145deg, #1e293b, #0f172a);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      cursor: pointer;
+      transition: border-color 0.25s ease, transform 0.25s ease, box-shadow 0.25s ease;
+    }
+
+    .avatar-box:hover {
+      border-color: var(--accent);
+      transform: translateY(-2px);
+      box-shadow: 0 12px 28px rgba(56, 189, 248, 0.22);
+    }
+
+    .avatar-box img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center 20%;
+      display: block;
+    }
+
+    .avatar-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(8, 10, 15, 0.68);
+      color: #f8fafc;
+      font-size: 12px;
+      font-weight: 600;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+      text-align: center;
+      padding: 8px;
+      pointer-events: none;
+    }
+
+    .avatar-box:hover .avatar-overlay {
+      opacity: 1;
+    }
+
+    .avatar-fallback {
+      font-size: 40px;
+      font-weight: 800;
+      color: var(--accent);
+      letter-spacing: -0.03em;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 12px;
+      color: #cbd5e1;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: rgba(34, 197, 94, 0.1);
+      border: 1px solid rgba(34, 197, 94, 0.25);
+      margin-bottom: 10px;
+    }
+
+    .status-pill i {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--green);
+      display: inline-block;
+    }
+
+    h1 {
+      font-size: clamp(28px, 4vw, 40px);
+      line-height: 1.15;
+      letter-spacing: -0.025em;
+      margin-bottom: 6px;
+      font-weight: 800;
+    }
+
+    .role {
+      color: var(--accent);
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
+
+    .bio {
+      color: #cbd5e1;
+      font-size: 15px;
+      max-width: 68ch;
+      margin-bottom: 18px;
+    }
+
+    .hero-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    section {
+      margin-top: 56px;
+    }
+
+    .section-head {
+      margin-bottom: 18px;
+    }
+
+    .section-head h2 {
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-bottom: 4px;
+    }
+
+    .section-head p {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+    }
+
+    .card:hover {
+      transform: translateY(-2px);
+      border-color: var(--border-strong);
+      background: var(--card-hover);
+    }
+
+    .exp-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+
+    .exp-role {
+      font-size: 17px;
+      font-weight: 700;
+    }
+
+    .exp-org {
+      color: var(--accent);
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .exp-meta {
+      color: var(--muted);
+      font-size: 13px;
+      text-align: right;
+    }
+
+    .exp-list {
+      margin-top: 10px;
+      padding-left: 18px;
+      color: #cbd5e1;
+      font-size: 14px;
+    }
+
+    .exp-list li + li {
+      margin-top: 6px;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .project-thumb {
+      height: 128px;
+      border-radius: 12px;
+      margin-bottom: 14px;
+      background: linear-gradient(135deg, rgba(56, 189, 248, 0.16), rgba(129, 140, 248, 0.14));
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 13px;
+      color: #e2e8f0;
+      letter-spacing: 0.02em;
+    }
+
+    .project-title {
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .project-desc {
+      color: var(--muted);
+      font-size: 13.5px;
+      margin-bottom: 12px;
+    }
+
+    .tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .tag {
+      font-size: 11.5px;
+      padding: 3px 9px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: #cbd5e1;
+    }
+
+    .stack {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .pub-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .pub-title {
+      font-weight: 600;
+      font-size: 15px;
+      margin-bottom: 3px;
+    }
+
+    .pub-sub {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .badge {
+      font-size: 12px;
+      font-weight: 600;
+      padding: 5px 10px;
+      border-radius: 8px;
+      background: rgba(56, 189, 248, 0.12);
+      border: 1px solid rgba(56, 189, 248, 0.28);
+      color: #bae6fd;
+      white-space: nowrap;
+    }
+
+    .connect-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .connect-card {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      text-decoration: none;
+      color: var(--text);
+    }
+
+    .connect-label {
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    .connect-handle {
+      color: var(--muted);
+      font-size: 12.5px;
+      word-break: break-all;
+    }
+
+    /* Hộp thoại chỉnh sửa nhanh đường dẫn trang cá nhân */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 150;
+      background: rgba(4, 6, 10, 0.78);
+      backdrop-filter: blur(8px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+
+    .modal-backdrop.open {
+      display: flex;
+    }
+
+    .modal-panel {
+      width: 100%;
+      max-width: 520px;
+      background: #0f131c;
+      border: 1px solid rgba(56, 189, 248, 0.35);
+      border-radius: 18px;
+      padding: 22px;
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.65);
+    }
+
+    .modal-title {
+      font-size: 17px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .modal-sub {
+      color: var(--muted);
+      font-size: 13px;
+      margin-bottom: 16px;
+    }
+
+    .field-group {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      max-height: 55vh;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+
+    .field-row {
+      display: grid;
+      grid-template-columns: 110px 1fr;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .field-input {
+      width: 100%;
+      padding: 8px 11px;
+      border-radius: 9px;
+      background: #080a0f;
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-size: 13px;
+      outline: none;
+      transition: border-color 0.2s ease;
+    }
+
+    .field-input:focus {
+      border-color: var(--accent);
+    }
+
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 18px;
+      flex-wrap: wrap;
+    }
+
+    footer {
+      margin-top: 64px;
+      padding-top: 24px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    /* Tương thích responsive trên máy tính bảng và điện thoại */
+    @media (max-width: 860px) {
+      .hero {
+        grid-template-columns: 1fr;
+        text-align: center;
+      }
+      .avatar-box {
+        margin: 0 auto;
+      }
+      .hero-actions {
+        justify-content: center;
+      }
+      .grid-3 {
+        grid-template-columns: 1fr;
+      }
+      .connect-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 520px) {
+      nav {
+        display: none;
+      }
+      .connect-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body class="intro-lock intro-dark">
+  <div id="assembly-progress" aria-hidden="true"></div>
+  <div id="intro-dark-veil" aria-hidden="true"></div>
+  <canvas id="blueprint-canvas" aria-hidden="true"></canvas>
+  <div id="ambient-stage" aria-hidden="true"></div>
+  <div id="toast-msg" class="toast-msg" role="status" aria-live="polite"></div>
+
+  <!-- Thanh điều hướng đầu trang -->
+  <header>
+    <div class="nav-wrap">
+      <a class="brand bp-node hero-node" href="#top" data-bp-target style="--tx:-36px; --ty:-10px; --sx:1.25; --sy:0.82; --delay:1180ms; --dur:1.1s;">
+        <span class="brand-dot"></span>
+        <span>Phạm Ngọc Tính</span>
+      </a>
+      <nav class="bp-node hero-node" data-bp-target style="--tx:0px; --ty:-14px; --sx:1.2; --sy:0.85; --delay:1240ms; --dur:1.1s;">
+        <a href="#experience">Kinh nghiệm</a>
+        <a href="#projects">Dự án nổi bật</a>
+        <a href="#updates">Cập nhật</a>
+        <a href="#connect">Liên hệ</a>
+      </nav>
+      <div class="nav-actions bp-node hero-node" data-bp-target style="--tx:36px; --ty:-10px; --sx:1.25; --sy:0.82; --delay:1300ms; --dur:1.1s;">
+        <input type="file" id="avatar-file-input" accept="image/*" style="display:none;" />
+        <button class="btn" id="pick-avatar" type="button">Đổi ảnh đại diện</button>
+        <button class="btn" id="edit-links-btn" type="button">Sửa link MXH</button>
+        <button class="btn btn-primary" id="download-html" type="button">Tải xuống HTML</button>
+        <button class="btn" id="copy-html" type="button">Sao chép HTML</button>
+        <button class="btn btn-active-scroll" id="auto-scroll-btn" type="button">Tự động cuộn: Bật</button>
+        <button class="btn" id="replay-intro" type="button">Xem lại hiệu ứng</button>
+        <button class="btn btn-primary" id="toggle-motion" type="button">Hiệu ứng: Bật</button>
+      </div>
+    </div>
+  </header>
+
+  <main id="top">
+    <!-- Khối giới thiệu chính -->
+    <section class="hero bp-node hero-node" data-bp-target style="--tx:0px; --ty:28px; --sx:0.78; --sy:1.26; --delay:1140ms; --dur:1.25s;">
+      <div class="avatar-box bp-node hero-node" id="avatar-box" title="Bấm để chọn ảnh đại diện của bạn" data-bp-target style="--tx:-54px; --ty:18px; --sx:0.7; --sy:1.34; --delay:1260ms; --dur:1.3s;">
+        <img
+          id="hero-avatar-img"
+          src="avatar.jpg"
+          alt="Phạm Ngọc Tính"
+          onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"
+        />
+        <span class="avatar-fallback" style="display:none;">PNT</span>
+        <div class="avatar-overlay">
+          <span>Đổi ảnh của bạn</span>
+          <span style="font-size:10.5px; color:#38bdf8; font-weight:500;">(avatar.jpg)</span>
+        </div>
+      </div>
+
+      <div>
+        <div class="status-pill bp-node hero-node" data-bp-target style="--tx:44px; --ty:-14px; --sx:1.32; --sy:0.76; --delay:1320ms; --dur:1.2s;">
+          <i></i>
+          <span>Sẵn sàng hợp tác &amp; trao đổi dự án</span>
+        </div>
+        <h1 class="bp-node hero-node" data-bp-target style="--tx:62px; --ty:12px; --sx:1.36; --sy:0.74; --delay:1380ms; --dur:1.3s;">Phạm Ngọc Tính</h1>
+        <div class="role bp-node hero-node" data-bp-target style="--tx:-52px; --ty:14px; --sx:1.3; --sy:0.78; --delay:1440ms; --dur:1.25s;">Software Engineer • Web &amp; System Builder</div>
+        <p class="bio bp-node hero-node" data-bp-target style="--tx:42px; --ty:18px; --sx:0.84; --sy:1.22; --delay:1500ms; --dur:1.3s;">
+          Xin chào, mình là <strong>Phạm Ngọc Tính</strong>. Mình tập trung xây dựng các ứng dụng web gọn nhẹ,
+          giao diện tối giản trực quan và các công cụ tối ưu quy trình làm việc hằng ngày.
+        </p>
+        <div class="hero-actions bp-node hero-node" data-bp-target style="--tx:-36px; --ty:20px; --sx:1.24; --sy:0.8; --delay:1560ms; --dur:1.25s;">
+          <a class="btn btn-primary" href="#connect">Kết nối ngay</a>
+          <a class="btn" href="#projects">Xem dự án</a>
+          <button class="btn" id="copy-email" type="button">Sao chép email</button>
+        </div>
+      </div>
+    </section>
+
+    <div class="circuit-line" data-scroll-line></div>
+
+    <!-- Kinh nghiệm làm việc -->
+    <section id="experience" data-bp-section>
+      <div class="section-head bp-node scroll-node" data-bp-target style="--tx:-36px; --ty:18px; --sx:1.28; --sy:0.78; --delay:40ms;">
+        <h2>Kinh nghiệm làm việc</h2>
+        <p>Những cột mốc phát triển sản phẩm và kỹ thuật thực tế</p>
+      </div>
+
+      <div class="card bp-node scroll-node" data-bp-target style="--tx:34px; --ty:24px; --sx:0.82; --sy:1.22; --delay:130ms;">
+        <div class="exp-top">
+          <div>
+            <div class="exp-role">Software &amp; Frontend Developer</div>
+            <div class="exp-org">Independent / Project-based</div>
+          </div>
+          <div class="exp-meta">
+            <div>Việt Nam</div>
+            <div>2024 – Hiện tại</div>
+          </div>
+        </div>
+        <ul class="exp-list">
+          <li>Thiết kế và phát triển giao diện web tương tác mượt mà với HTML5, CSS3, JavaScript và các framework hiện đại.</li>
+          <li>Tối ưu hiệu năng hiển thị, cấu trúc mã nguồn dễ bảo trì và trải nghiệm người dùng trên nhiều kích thước màn hình.</li>
+          <li>Xây dựng các tiện ích hỗ trợ tự động hóa, kiểm thử giao diện và quản lý dữ liệu gọn nhẹ.</li>
+        </ul>
+      </div>
+    </section>
+
+    <div class="circuit-line" data-scroll-line></div>
+
+    <!-- Dự án nổi bật -->
+    <section id="projects" data-bp-section>
+      <div class="section-head bp-node scroll-node" data-bp-target style="--tx:-36px; --ty:18px; --sx:1.28; --sy:0.78; --delay:40ms;">
+        <h2>Dự án nổi bật</h2>
+        <p>Một số sản phẩm và hệ thống tiêu biểu do Phạm Ngọc Tính thực hiện</p>
+      </div>
+
+      <div class="grid-3">
+        <article class="card bp-node scroll-node" data-bp-target style="--tx:-44px; --ty:24px; --sx:0.76; --sy:1.28; --delay:90ms;">
+          <div class="project-thumb">UI &amp; Motion Engine</div>
+          <div class="project-title">Interactive Portfolio Template</div>
+          <p class="project-desc">
+            Giao diện hồ sơ cá nhân nền tối kết hợp hiệu ứng chuyển động nhẹ nhàng và phản hồi tức thì.
+          </p>
+          <div class="tags">
+            <span class="tag">HTML</span>
+            <span class="tag">CSS</span>
+            <span class="tag">JavaScript</span>
+          </div>
+        </article>
+
+        <article class="card bp-node scroll-node" data-bp-target style="--tx:0px; --ty:28px; --sx:0.74; --sy:1.32; --delay:170ms;">
+          <div class="project-thumb">Workflow Utility</div>
+          <div class="project-title">Dev &amp; Style Inspector Toolkit</div>
+          <p class="project-desc">
+            Bộ tiện ích nhỏ giúp kiểm tra biến giao diện, tinh chỉnh bố cục và thử nghiệm nhanh trên trình duyệt.
+          </p>
+          <div class="tags">
+            <span class="tag">DOM</span>
+            <span class="tag">CSS Variables</span>
+            <span class="tag">Tooling</span>
+          </div>
+        </article>
+
+        <article class="card bp-node scroll-node" data-bp-target style="--tx:44px; --ty:24px; --sx:0.76; --sy:1.28; --delay:250ms;">
+          <div class="project-thumb">Web Experience</div>
+          <div class="project-title">Custom Greeting &amp; Event Page</div>
+          <p class="project-desc">
+            Trang web tương tác cá nhân hóa với hiệu ứng thị giác, âm thanh nền và lời nhắn tùy biến.
+          </p>
+          <div class="tags">
+            <span class="tag">Animation</span>
+            <span class="tag">Audio</span>
+            <span class="tag">Responsive</span>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <div class="circuit-line" data-scroll-line></div>
+
+    <!-- Cập nhật gần đây -->
+    <section id="updates" data-bp-section>
+      <div class="section-head bp-node scroll-node" data-bp-target style="--tx:-36px; --ty:18px; --sx:1.28; --sy:0.78; --delay:40ms;">
+        <h2>Cập nhật gần đây</h2>
+        <p>Ghi nhận các bản cập nhật và hoạt động nổi bật</p>
+      </div>
+
+      <div class="stack">
+        <div class="card pub-item bp-node scroll-node" data-bp-target style="--tx:-38px; --ty:22px; --sx:1.26; --sy:0.8; --delay:100ms;">
+          <div>
+            <div class="pub-title">Phiên bản Portfolio cá nhân — Phạm Ngọc Tính</div>
+            <div class="pub-sub">Hoàn thiện bố cục dark-mode, hiệu ứng wireframe và khả năng tùy chỉnh nhanh</div>
+          </div>
+          <span class="badge">v1.0 • 2026</span>
+        </div>
+
+        <div class="card pub-item bp-node scroll-node" data-bp-target style="--tx:38px; --ty:22px; --sx:1.26; --sy:0.8; --delay:180ms;">
+          <div>
+            <div class="pub-title">Tối ưu trải nghiệm tương tác &amp; hiệu ứng Blueprint</div>
+            <div class="pub-sub">Đường gióng đo kích thước thời gian thực và hỗ trợ bật/tắt linh hoạt</div>
+          </div>
+          <span class="badge">Cải tiến</span>
+        </div>
+      </div>
+    </section>
+
+    <div class="circuit-line" data-scroll-line></div>
+
+    <!-- Liên hệ và kết nối -->
+    <section id="connect" data-bp-section>
+      <div class="section-head bp-node scroll-node" data-bp-target style="--tx:-36px; --ty:18px; --sx:1.28; --sy:0.78; --delay:40ms;">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;">
+          <div>
+            <h2>Kết nối &amp; hợp tác</h2>
+            <p>Bấm trực tiếp vào các thẻ bên dưới để truy cập trang cá nhân của Phạm Ngọc Tính</p>
+          </div>
+          <button class="btn btn-primary" id="open-links-inline" type="button">+ Chỉnh sửa link</button>
+        </div>
+      </div>
+
+      <div class="connect-grid" id="connect-grid">
+        <a class="card connect-card bp-node scroll-node" data-bp-target data-link-idx="0" href="mailto:phamngoctinh@example.com" style="--tx:-34px; --ty:22px; --sx:0.78; --sy:1.26; --delay:90ms;">
+          <span class="connect-label">Email</span>
+          <span class="connect-handle">phamngoctinh@example.com</span>
+        </a>
+        <a class="card connect-card bp-node scroll-node" data-bp-target data-link-idx="1" href="https://github.com/phamngoctinh" target="_blank" rel="noopener noreferrer" style="--tx:-14px; --ty:24px; --sx:0.78; --sy:1.26; --delay:150ms;">
+          <span class="connect-label">GitHub</span>
+          <span class="connect-handle">@phamngoctinh</span>
+        </a>
+        <a class="card connect-card bp-node scroll-node" data-bp-target data-link-idx="2" href="https://linkedin.com/in/phamngoctinh" target="_blank" rel="noopener noreferrer" style="--tx:14px; --ty:24px; --sx:0.78; --sy:1.26; --delay:210ms;">
+          <span class="connect-label">LinkedIn</span>
+          <span class="connect-handle">Phạm Ngọc Tính</span>
+        </a>
+        <a class="card connect-card bp-node scroll-node" data-bp-target data-link-idx="3" href="https://facebook.com/phamngoctinh" target="_blank" rel="noopener noreferrer" style="--tx:34px; --ty:22px; --sx:0.78; --sy:1.26; --delay:270ms;">
+          <span class="connect-label">Facebook</span>
+          <span class="connect-handle">Phạm Ngọc Tính</span>
+        </a>
+      </div>
+    </section>
+
+    <footer class="bp-node scroll-node" style="--tx:0px; --ty:16px; --sx:1.2; --sy:0.84; --delay:120ms;">
+      <span>© <span id="year"></span> Phạm Ngọc Tính.</span>
+      <span>Built with HTML, CSS &amp; Vanilla JS</span>
+    </footer>
+  </main>
+
+  <!-- Cửa sổ tùy chỉnh nhanh đường dẫn trang cá nhân -->
+  <div class="modal-backdrop" id="links-modal" role="dialog" aria-modal="true" aria-labelledby="links-modal-title">
+    <div class="modal-panel">
+      <div class="modal-title" id="links-modal-title">Chỉnh sửa link trang cá nhân</div>
+      <div class="modal-sub">Nhập tên nền tảng và đường dẫn (URL) của bạn. Khi khách bấm vào thẻ sẽ mở thẳng trang cá nhân đó.</div>
+      <div class="field-group" id="links-form-list"></div>
+      <div class="modal-actions">
+        <button class="btn" id="add-link-row" type="button">+ Thêm kênh mới</button>
+        <button class="btn" id="close-links-modal" type="button">Hủy</button>
+        <button class="btn btn-primary" id="save-links-btn" type="button">Lưu liên kết</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    try {
+      // Cập nhật năm bản quyền tự động
+      const yearEl = document.getElementById("year");
+      if (yearEl) yearEl.textContent = new Date().getFullYear();
+
+      // Hiển thị thông báo ngắn gọn thay thế alert()
+      const toastEl = document.getElementById("toast-msg");
+      let toastTimer = null;
+      function showToast(message) {
+        if (!toastEl) return;
+        toastEl.textContent = message;
+        toastEl.classList.add("show");
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => toastEl.classList.remove("show"), 1900);
+      }
+
+      // Sao chép địa chỉ email tương thích cả iframe/sandbox
+      const copyBtn = document.getElementById("copy-email");
+      if (copyBtn) {
+        copyBtn.addEventListener("click", () => {
+          const email = "phamngoctinh@example.com";
+          const tempInput = document.createElement("input");
+          tempInput.value = email;
+          document.body.appendChild(tempInput);
+          tempInput.select();
+          try {
+            document.execCommand("copy");
+            const oldText = copyBtn.textContent;
+            copyBtn.textContent = "Đã sao chép!";
+            showToast("Đã sao chép: " + email);
+            setTimeout(() => (copyBtn.textContent = oldText), 1600);
+          } catch (e) {
+            showToast("Email: " + email);
+          } finally {
+            document.body.removeChild(tempInput);
+          }
+        });
+      }
+
+      // Quản lý danh sách link trang cá nhân có thể bấm trực tiếp & chỉnh sửa nhanh
+      const defaultSocialLinks = [
+        { label: "Email", handle: "phamngoctinh@example.com", url: "mailto:phamngoctinh@example.com" },
+        { label: "GitHub", handle: "@phamngoctinh", url: "https://github.com/phamngoctinh" },
+        { label: "LinkedIn", handle: "Phạm Ngọc Tính", url: "https://linkedin.com/in/phamngoctinh" },
+        { label: "Facebook", handle: "Phạm Ngọc Tính", url: "https://facebook.com/phamngoctinh" }
+      ];
+
+      let socialLinks = defaultSocialLinks.slice();
+      try {
+        const savedLinks = localStorage.getItem("pnt_portfolio_links");
+        if (savedLinks) {
+          const parsed = JSON.parse(savedLinks);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            socialLinks = parsed;
+          }
+        }
+      } catch (e) {}
+
+      const connectGridEl = document.getElementById("connect-grid");
+      function normalizeHref(rawUrl) {
+        const trimmed = (rawUrl || "").trim();
+        if (!trimmed) return "#connect";
+        if (trimmed.includes("@") && !trimmed.startsWith("http") && !trimmed.startsWith("mailto:")) {
+          return "mailto:" + trimmed;
+        }
+        if (!/^https?:\/\//i.test(trimmed) && !/^mailto:/i.test(trimmed) && !/^tel:/i.test(trimmed)) {
+          return "https://" + trimmed;
+        }
+        return trimmed;
+      }
+
+      function renderSocialLinks() {
+        if (!connectGridEl) return;
+        connectGridEl.innerHTML = "";
+        socialLinks.forEach((item, idx) => {
+          const href = normalizeHref(item.url);
+          const isExternal = !href.startsWith("mailto:") && !href.startsWith("#");
+          const a = document.createElement("a");
+          a.className = "card connect-card bp-node scroll-node is-assembled";
+          a.setAttribute("data-bp-target", "");
+          a.href = href;
+          if (isExternal) {
+            a.target = "_blank";
+            a.rel = "noopener noreferrer";
+          }
+          a.style.setProperty("--tx", `${(idx % 2 === 0 ? -1 : 1) * 24}px`);
+          a.style.setProperty("--ty", "20px");
+          a.style.setProperty("--delay", `${80 + idx * 50}ms`);
+
+          const labelSpan = document.createElement("span");
+          labelSpan.className = "connect-label";
+          labelSpan.textContent = item.label || "Liên kết";
+
+          const handleSpan = document.createElement("span");
+          handleSpan.className = "connect-handle";
+          handleSpan.textContent = item.handle || href.replace(/^mailto:/i, "");
+
+          a.appendChild(labelSpan);
+          a.appendChild(handleSpan);
+          connectGridEl.appendChild(a);
+        });
+      }
+      renderSocialLinks();
+
+      const linksModal = document.getElementById("links-modal");
+      const linksFormList = document.getElementById("links-form-list");
+      const editLinksBtn = document.getElementById("edit-links-btn");
+      const openLinksInlineBtn = document.getElementById("open-links-inline");
+      const closeLinksModalBtn = document.getElementById("close-links-modal");
+      const addLinkRowBtn = document.getElementById("add-link-row");
+      const saveLinksBtn = document.getElementById("save-links-btn");
+
+      function createLinkFormRow(item = { label: "", handle: "", url: "" }) {
+        const row = document.createElement("div");
+        row.className = "field-row";
+
+        const labelInput = document.createElement("input");
+        labelInput.type = "text";
+        labelInput.className = "field-input";
+        labelInput.placeholder = "Tên (vd: TikTok)";
+        labelInput.value = item.label || "";
+
+        const urlInput = document.createElement("input");
+        urlInput.type = "text";
+        urlInput.className = "field-input";
+        urlInput.placeholder = "Link URL (vd: https://tiktok.com/@...)";
+        urlInput.value = item.url || "";
+
+        row.appendChild(labelInput);
+        row.appendChild(urlInput);
+        return row;
+      }
+
+      function openLinksEditor() {
+        if (!linksModal || !linksFormList) return;
+        linksFormList.innerHTML = "";
+        socialLinks.forEach((item) => {
+          linksFormList.appendChild(createLinkFormRow(item));
+        });
+        linksModal.classList.add("open");
+      }
+
+      if (editLinksBtn) editLinksBtn.addEventListener("click", openLinksEditor);
+      if (openLinksInlineBtn) openLinksInlineBtn.addEventListener("click", openLinksEditor);
+      if (closeLinksModalBtn) {
+        closeLinksModalBtn.addEventListener("click", () => linksModal.classList.remove("open"));
+      }
+      if (linksModal) {
+        linksModal.addEventListener("click", (e) => {
+          if (e.target === linksModal) linksModal.classList.remove("open");
+        });
+      }
+      if (addLinkRowBtn && linksFormList) {
+        addLinkRowBtn.addEventListener("click", () => {
+          linksFormList.appendChild(createLinkFormRow());
+        });
+      }
+      if (saveLinksBtn && linksFormList) {
+        saveLinksBtn.addEventListener("click", () => {
+          const rows = Array.from(linksFormList.querySelectorAll(".field-row"));
+          const updated = [];
+          rows.forEach((row) => {
+            const inputs = row.querySelectorAll("input");
+            const label = inputs[0] ? inputs[0].value.trim() : "";
+            const url = inputs[1] ? inputs[1].value.trim() : "";
+            if (label && url) {
+              const displayHandle = url
+                .replace(/^mailto:/i, "")
+                .replace(/^https?:\/\/(www\.)?/i, "")
+                .replace(/\/$/, "");
+              updated.push({ label, handle: displayHandle, url });
+            }
+          });
+          if (updated.length > 0) {
+            socialLinks = updated;
+            try {
+              localStorage.setItem("pnt_portfolio_links", JSON.stringify(socialLinks));
+            } catch (e) {}
+            renderSocialLinks();
+            showToast("Đã lưu danh sách link trang cá nhân!");
+          }
+          linksModal.classList.remove("open");
+        });
+      }
+
+      // Tính năng chọn & lưu ảnh đại diện thay thế vào khung PNT
+      const avatarBox = document.getElementById("avatar-box");
+      const avatarImg = document.getElementById("hero-avatar-img");
+      const fileInput = document.getElementById("avatar-file-input");
+      const pickAvatarBtn = document.getElementById("pick-avatar");
+
+      function applyAvatarDataUrl(dataUrl) {
+        if (!avatarImg) return;
+        avatarImg.setAttribute("src", dataUrl);
+        avatarImg.src = dataUrl;
+        avatarImg.style.display = "block";
+        if (avatarImg.nextElementSibling) {
+          avatarImg.nextElementSibling.style.display = "none";
+        }
+      }
+
+      try {
+        const savedAvatar = localStorage.getItem("pnt_portfolio_avatar");
+        if (savedAvatar) {
+          applyAvatarDataUrl(savedAvatar);
+        }
+      } catch (e) {}
+
+      function triggerPickAvatar() {
+        if (fileInput) fileInput.click();
+      }
+
+      if (avatarBox) avatarBox.addEventListener("click", triggerPickAvatar);
+      if (pickAvatarBtn) pickAvatarBtn.addEventListener("click", triggerPickAvatar);
+
+      if (fileInput) {
+        fileInput.addEventListener("change", (e) => {
+          const file = e.target.files && e.target.files[0];
+          if (!file) return;
+          const reader = new FileReader();
+          reader.onload = (ev) => {
+            const result = ev.target && ev.target.result;
+            if (typeof result === "string") {
+              applyAvatarDataUrl(result);
+              try {
+                localStorage.setItem("pnt_portfolio_avatar", result);
+              } catch (err) {}
+              showToast("Đã lưu ảnh đại diện vào trang!");
+            }
+          };
+          reader.readAsDataURL(file);
+        });
+      }
+
+      // Tạo bản chụp HTML hoàn chỉnh đã nhúng sẵn ảnh đại diện, link MXH và trạng thái sạch
+      function buildExportableHtml() {
+        const clonedDoc = document.documentElement.cloneNode(true);
+        const clonedBody = clonedDoc.querySelector("body");
+        if (clonedBody) {
+          clonedBody.classList.remove("bp-active", "no-motion");
+          clonedBody.classList.add("intro-lock", "intro-dark");
+        }
+
+        // Nhúng trực tiếp ảnh đại diện đã cài vào thuộc tính src của ảnh trong bản xuất
+        const clonedAvatar = clonedDoc.querySelector("#hero-avatar-img");
+        if (clonedAvatar && avatarImg && avatarImg.getAttribute("src")) {
+          clonedAvatar.setAttribute("src", avatarImg.getAttribute("src"));
+          clonedAvatar.style.display = "block";
+          const fallbackEl = clonedAvatar.nextElementSibling;
+          if (fallbackEl) fallbackEl.style.display = "none";
+        }
+
+        // Đặt lại trạng thái ban đầu cho các phần tử hiệu ứng và thanh tiến trình
+        const clonedProgress = clonedDoc.querySelector("#assembly-progress");
+        if (clonedProgress) clonedProgress.style.width = "0%";
+
+        clonedDoc.querySelectorAll(".scroll-node").forEach((el) => {
+          el.classList.remove("is-assembled");
+        });
+        clonedDoc.querySelectorAll("[data-bp-section]").forEach((sec) => {
+          sec.removeAttribute("data-bp-scanned");
+        });
+        clonedDoc.querySelectorAll("[data-scroll-line]").forEach((line) => {
+          line.style.removeProperty("--line-scale");
+        });
+        const clonedStage = clonedDoc.querySelector("#ambient-stage");
+        if (clonedStage) clonedStage.innerHTML = "";
+        const clonedModal = clonedDoc.querySelector("#links-modal");
+        if (clonedModal) clonedModal.classList.remove("open");
+
+        return "<!DOCTYPE html>\n" + clonedDoc.outerHTML;
+      }
+
+      // Tải xuống tệp HTML hoàn chỉnh (bao gồm cả ảnh đại diện & link MXH đã cài)
+      const downloadHtmlBtn = document.getElementById("download-html");
+      if (downloadHtmlBtn) {
+        downloadHtmlBtn.addEventListener("click", () => {
+          try {
+            const fullHtml = buildExportableHtml();
+            const blob = new Blob([fullHtml], { type: "text/html;charset=utf-8" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "pham-ngoc-tinh-portfolio.html";
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(() => URL.revokeObjectURL(url), 1500);
+            showToast("Đã tải xuống tệp HTML kèm ảnh của bạn!");
+          } catch (e) {
+            showToast("Không thể tải tệp trực tiếp, hãy dùng Sao chép HTML.");
+          }
+        });
+      }
+
+      // Sao chép mã nguồn HTML hoàn chỉnh đã nhúng sẵn ảnh
+      const copyHtmlBtn = document.getElementById("copy-html");
+      if (copyHtmlBtn) {
+        copyHtmlBtn.addEventListener("click", () => {
+          const htmlContent = buildExportableHtml();
+          const ta = document.createElement("textarea");
+          ta.value = htmlContent;
+          document.body.appendChild(ta);
+          ta.select();
+          try {
+            document.execCommand("copy");
+            showToast("Đã sao chép toàn bộ HTML (kèm ảnh)!");
+          } catch (e) {
+            showToast("Không thể sao chép tự động.");
+          } finally {
+            document.body.removeChild(ta);
+          }
+        });
+      }
+
+      let motionEnabled = true;
+      let autoScrollEnabled = true;
+      let autoScrollDirection = 1;
+      let autoScrollPauseUntil = 0;
+
+      const canvas = document.getElementById("blueprint-canvas");
+      const ctx = canvas ? canvas.getContext("2d") : null;
+      let animRafId = null;
+      let activeBlueprints = [];
+      let activeBeams = [];
+
+      // Trạng thái con trỏ chuột / chạm cảm ứng để tạo chùm vệt sáng hội tụ bám theo
+      const pointerState = {
+        active: false,
+        x: window.innerWidth * 0.5,
+        y: window.innerHeight * 0.44,
+        smoothX: window.innerWidth * 0.5,
+        smoothY: window.innerHeight * 0.44,
+        lastMoveTime: 0,
+        pulse: 0
+      };
+
+      const cursorPalette = ["#38bdf8", "#f43f5e", "#22c55e", "#818cf8", "#f59e0b", "#e2e8f0"];
+      const cursorStreamers = Array.from({ length: 34 }, (_, i) => ({
+        angle: (Math.PI * 2 * i) / 34,
+        orbitRadius: 10 + (i % 6) * 11,
+        speed: (i % 2 === 0 ? 1 : -1) * (0.018 + (i % 5) * 0.006),
+        wobblePhase: i * 0.65,
+        color: cursorPalette[i % cursorPalette.length],
+        size: 1.5 + (i % 4) * 0.55,
+        lag: 0.14 + (i % 5) * 0.032,
+        // Tọa độ & vận tốc riêng để bay lượn tự do khắp màn hình khi không có con trỏ
+        freeX: Math.random() * Math.max(320, window.innerWidth),
+        freeY: Math.random() * Math.max(480, window.innerHeight),
+        freeVx: (Math.random() - 0.5) * 2.6,
+        freeVy: (Math.random() - 0.5) * 2.6,
+        freeTurnPhase: Math.random() * Math.PI * 2,
+        trail: []
+      }));
+
+      function updatePointerPosition(clientX, clientY, isClickPulse = false) {
+        pointerState.x = clientX;
+        pointerState.y = clientY;
+        if (!pointerState.active) {
+          pointerState.smoothX = clientX;
+          pointerState.smoothY = clientY;
+        }
+        pointerState.active = true;
+        pointerState.lastMoveTime = performance.now();
+        if (isClickPulse) {
+          pointerState.pulse = 1;
+        }
+      }
+
+      window.addEventListener(
+        "pointermove",
+        (e) => updatePointerPosition(e.clientX, e.clientY, false),
+        { passive: true }
+      );
+      window.addEventListener(
+        "pointerdown",
+        (e) => updatePointerPosition(e.clientX, e.clientY, true),
+        { passive: true }
+      );
+      document.addEventListener("mouseleave", () => {
+        pointerState.active = false;
+      });
+
+      // Hàm vẽ chùm vệt sáng: bay loạn tự do khắp màn hình khi rảnh, lập tức tụ họp khi có con trỏ
+      function renderCursorConvergence(now) {
+        if (!motionEnabled || !ctx) return;
+
+        const w = window.innerWidth;
+        const h = window.innerHeight;
+        const idleElapsed = now - pointerState.lastMoveTime;
+        const hasCursor = pointerState.active && idleElapsed <= 1400;
+
+        pointerState.smoothX += (pointerState.x - pointerState.smoothX) * 0.12;
+        pointerState.smoothY += (pointerState.y - pointerState.smoothY) * 0.12;
+        pointerState.pulse = Math.max(0, pointerState.pulse - 0.025);
+
+        const moveDist = Math.hypot(pointerState.x - pointerState.smoothX, pointerState.y - pointerState.smoothY);
+        const speedBoost = hasCursor ? Math.min(28, moveDist * 0.45) : 0;
+
+        const px = pointerState.smoothX;
+        const py = pointerState.smoothY;
+
+        // Chỉ hiển thị lõi năng lượng hội tụ khi có con trỏ hoạt động
+        if (hasCursor) {
+          const glowRadius = Math.max(8, 24 + speedBoost * 0.55 + pointerState.pulse * 32);
+          const coreGrad = ctx.createRadialGradient(px, py, 0, px, py, glowRadius);
+          coreGrad.addColorStop(0, "rgba(224, 242, 254, 0.85)");
+          coreGrad.addColorStop(0.35, "rgba(56, 189, 248, 0.45)");
+          coreGrad.addColorStop(0.75, "rgba(244, 63, 94, 0.18)");
+          coreGrad.addColorStop(1, "rgba(8, 10, 15, 0)");
+
+          ctx.save();
+          ctx.fillStyle = coreGrad;
+          ctx.beginPath();
+          ctx.arc(px, py, glowRadius, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.strokeStyle = "rgba(56, 189, 248, 0.58)";
+          ctx.lineWidth = 1;
+          ctx.setLineDash([3, 3]);
+          ctx.beginPath();
+          ctx.arc(px, py, 10 + pointerState.pulse * 22, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.restore();
+        }
+
+        for (let idx = 0; idx < cursorStreamers.length; idx++) {
+          const st = cursorStreamers[idx];
+          let nextX;
+          let nextY;
+
+          if (hasCursor) {
+            // Chế độ tụ họp: các vệt sáng bị hút và xoáy quanh con trỏ
+            st.angle += st.speed * (1 + speedBoost * 0.025);
+            const breathe = Math.sin(now * 0.0028 + st.wobblePhase) * 8;
+            const dynamicRadius = Math.max(
+              4,
+              st.orbitRadius * (1 - Math.min(0.45, speedBoost / 75)) + breathe + pointerState.pulse * 32
+            );
+
+            const targetX = px + Math.cos(st.angle) * dynamicRadius;
+            const targetY = py + Math.sin(st.angle) * dynamicRadius;
+
+            const lastPt = st.trail.length > 0 ? st.trail[st.trail.length - 1] : { x: targetX, y: targetY };
+            nextX = lastPt.x + (targetX - lastPt.x) * st.lag;
+            nextY = lastPt.y + (targetY - lastPt.y) * st.lag;
+
+            // Đồng bộ vị trí tự do theo quỹ đạo hiện tại để khi bung ra sẽ tỏa từ đúng vị trí này
+            st.freeX = nextX;
+            st.freeY = nextY;
+          } else {
+            // Chế độ chạy loạn: mỗi vệt sáng lượn ngẫu nhiên khắp màn hình
+            st.freeTurnPhase += 0.025 + (idx % 4) * 0.007;
+            st.freeVx += Math.cos(st.freeTurnPhase + idx) * 0.09;
+            st.freeVy += Math.sin(st.freeTurnPhase * 1.15 - idx) * 0.09;
+
+            // Giới hạn tốc độ bay lượn mượt mà
+            const curSpeed = Math.hypot(st.freeVx, st.freeVy);
+            const maxFreeSpeed = 2.4 + (idx % 3) * 0.55;
+            if (curSpeed > maxFreeSpeed) {
+              st.freeVx = (st.freeVx / curSpeed) * maxFreeSpeed;
+              st.freeVy = (st.freeVy / curSpeed) * maxFreeSpeed;
+            }
+
+            st.freeX += st.freeVx;
+            st.freeY += st.freeVy;
+
+            // Phản xạ mềm khi chạm mép màn hình
+            if (st.freeX < 12) {
+              st.freeX = 12;
+              st.freeVx = Math.abs(st.freeVx);
+            } else if (st.freeX > w - 12) {
+              st.freeX = w - 12;
+              st.freeVx = -Math.abs(st.freeVx);
+            }
+
+            if (st.freeY < 12) {
+              st.freeY = 12;
+              st.freeVy = Math.abs(st.freeVy);
+            } else if (st.freeY > h - 12) {
+              st.freeY = h - 12;
+              st.freeVy = -Math.abs(st.freeVy);
+            }
+
+            nextX = st.freeX;
+            nextY = st.freeY;
+          }
+
+          st.trail.push({ x: nextX, y: nextY });
+          if (st.trail.length > 22) st.trail.shift();
+
+          const alphaScale = hasCursor ? 0.9 : 0.68;
+
+          if (st.trail.length > 1) {
+            for (let i = 1; i < st.trail.length; i++) {
+              const p0 = st.trail[i - 1];
+              const p1 = st.trail[i];
+              const ratio = i / st.trail.length;
+
+              ctx.save();
+              ctx.beginPath();
+              ctx.moveTo(p0.x, p0.y);
+              ctx.lineTo(p1.x, p1.y);
+              ctx.strokeStyle = st.color;
+              ctx.globalAlpha = ratio * alphaScale;
+              ctx.lineWidth = st.size * ratio;
+              ctx.lineCap = "round";
+              ctx.stroke();
+              ctx.restore();
+            }
+
+            ctx.save();
+            ctx.fillStyle = "#ffffff";
+            ctx.shadowColor = st.color;
+            ctx.shadowBlur = 8;
+            ctx.globalAlpha = alphaScale;
+            ctx.beginPath();
+            ctx.arc(nextX, nextY, st.size * 0.55, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+          }
+        }
+
+        if (hasCursor) {
+          const hoveredEl = document.elementFromPoint(px, py);
+          const snapCard = hoveredEl ? hoveredEl.closest(".card, .avatar-box, .btn") : null;
+          if (snapCard) {
+            const r = snapCard.getBoundingClientRect();
+            const cxCard = r.left + r.width * 0.5;
+            const cyCard = r.top + r.height * 0.5;
+
+            ctx.save();
+            const linkGrad = ctx.createLinearGradient(px, py, cxCard, cyCard);
+            linkGrad.addColorStop(0, "rgba(56, 189, 248, 0.58)");
+            linkGrad.addColorStop(1, "rgba(244, 63, 94, 0.05)");
+            ctx.strokeStyle = linkGrad;
+            ctx.lineWidth = 1;
+            ctx.setLineDash([4, 4]);
+            ctx.beginPath();
+            ctx.moveTo(px, py);
+            ctx.lineTo(cxCard, cyCard);
+            ctx.stroke();
+            ctx.restore();
+          }
+        }
+      }
+
+      // Đồng bộ kích thước canvas với DPI thiết bị và khung nhìn
+      function resizeCanvas() {
+        if (!canvas || !ctx) return;
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        canvas.width = Math.max(1, window.innerWidth) * dpr;
+        canvas.height = Math.max(1, window.innerHeight) * dpr;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      }
+
+      // Thêm danh sách phần tử vào hàng đợi vẽ đường gióng, tia laser dẫn hướng & quét kích thước
+      function enqueueBlueprintScan(elements, duration = 1600, originX = null, originY = null) {
+        if (!motionEnabled || !elements || elements.length === 0) return;
+        const now = performance.now();
+        const ox = originX !== null ? originX : window.innerWidth * 0.5;
+        const oy = originY !== null ? originY : window.innerHeight * 0.44;
+
+        elements.forEach((el, idx) => {
+          const color = idx % 2 === 0 ? "#38bdf8" : "#f43f5e";
+          activeBlueprints.push({
+            el,
+            start: now + idx * 70,
+            duration,
+            color
+          });
+          activeBeams.push({
+            el,
+            ox,
+            oy,
+            start: now + idx * 55,
+            duration: 950,
+            color
+          });
+        });
+      }
+
+      // Hiệu ứng mở màn 3 giai đoạn: Hội tụ hạt ở tâm tối -> Tỏa bung quỹ đạo vệt sáng -> Kéo giãn lắp ráp Hero
+      function runOpeningBlueprint() {
+        cancelAnimationFrame(animRafId);
+        activeBlueprints = [];
+        activeBeams = [];
+
+        if (!motionEnabled || !canvas || !ctx) {
+          document.body.classList.remove("intro-lock", "intro-dark");
+          document.body.classList.add("no-motion");
+          document.querySelectorAll("[data-scroll-line]").forEach((l) => l.style.setProperty("--line-scale", "1"));
+          return;
+        }
+
+        resizeCanvas();
+        document.body.classList.remove("no-motion", "bp-active");
+        document.body.classList.add("intro-lock", "intro-dark");
+
+        document.querySelectorAll(".scroll-node").forEach((el) => {
+          el.classList.remove("is-assembled");
+        });
+        document.querySelectorAll("[data-bp-section]").forEach((sec) => {
+          delete sec.dataset.bpScanned;
+        });
+
+        document.querySelectorAll(".hero-node").forEach((el) => {
+          el.style.animation = "none";
+          void el.offsetWidth;
+          el.style.animation = "";
+        });
+
+        const w = window.innerWidth;
+        const h = window.innerHeight;
+        const cx = w * 0.5;
+        const cy = h * 0.44;
+        const maxRadius = Math.hypot(w, h) * 0.55;
+
+        const orbitColors = ["#38bdf8", "#f43f5e", "#f59e0b", "#22c55e", "#818cf8", "#e2e8f0"];
+        const orbitNodes = Array.from({ length: 46 }, (_, i) => {
+          const baseAngle = (Math.PI * 2 * i) / 46 + (Math.random() - 0.5) * 0.15;
+          return {
+            baseAngle,
+            startDist: maxRadius * (0.55 + Math.random() * 0.45),
+            coreRadius: 8 + (i % 4) * 5,
+            size: 2.2 + (i % 4) * 1.1,
+            color: orbitColors[i % orbitColors.length],
+            scatterDist: maxRadius * (0.45 + Math.random() * 0.65),
+            spinDir: i % 2 === 0 ? 1 : -1,
+            trail: []
+          };
+        });
+
+        const startTime = performance.now();
+        const gatherPhase = 750;
+        const burstPhase = 720;
+        let heroTriggered = false;
+
+        function renderLoop(now) {
+          const elapsed = Math.max(0, now - startTime);
+          ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+
+          if (elapsed < gatherPhase + burstPhase) {
+            const isGather = elapsed < gatherPhase;
+            const p = isGather
+              ? Math.max(0, Math.min(1, elapsed / gatherPhase))
+              : Math.max(0, Math.min(1, (elapsed - gatherPhase) / burstPhase));
+
+            const easeGather = 1 - Math.pow(1 - p, 2.8);
+            const easeBurst = 1 - Math.pow(1 - p, 3.2);
+
+            const coreRadius = Math.max(
+              1,
+              isGather ? 6 + easeGather * 36 : Math.max(2, 42 * (1 - easeBurst) + 12)
+            );
+            const coreAlpha = isGather ? easeGather * 0.85 : (1 - easeBurst) * 0.9;
+            const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, coreRadius * 2.4);
+            grad.addColorStop(0, `rgba(224, 242, 254, ${coreAlpha})`);
+            grad.addColorStop(0.35, `rgba(56, 189, 248, ${coreAlpha * 0.65})`);
+            grad.addColorStop(0.7, `rgba(244, 63, 94, ${coreAlpha * 0.35})`);
+            grad.addColorStop(1, "rgba(8, 10, 15, 0)");
+
+            ctx.save();
+            ctx.fillStyle = grad;
+            ctx.beginPath();
+            ctx.arc(cx, cy, coreRadius * 2.4, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.beginPath();
+            ctx.arc(cx, cy, isGather ? 80 * (1 - easeGather) + 16 : 16 + easeBurst * 260, 0, Math.PI * 2);
+            ctx.strokeStyle = `rgba(56, 189, 248, ${isGather ? easeGather * 0.6 : (1 - easeBurst) * 0.55})`;
+            ctx.lineWidth = 1.2;
+            ctx.setLineDash([5, 5]);
+            ctx.stroke();
+            ctx.restore();
+
+            for (const node of orbitNodes) {
+              let r;
+              let ang;
+              let alpha;
+
+              if (isGather) {
+                r = node.startDist * (1 - easeGather) + node.coreRadius * easeGather;
+                ang = node.baseAngle + node.spinDir * (1 - easeGather) * 3.4;
+                alpha = Math.min(1, p * 2.2);
+              } else {
+                r = node.coreRadius + easeBurst * node.scatterDist;
+                ang = node.baseAngle + node.spinDir * easeBurst * 1.15;
+                alpha = Math.max(0, 1 - easeBurst * 0.95);
+              }
+
+              const x = cx + Math.cos(ang) * r;
+              const y = cy + Math.sin(ang) * r;
+
+              node.trail.push({ x, y });
+              if (node.trail.length > 10) node.trail.shift();
+
+              if (node.trail.length > 1) {
+                for (let tIdx = 1; tIdx < node.trail.length; tIdx++) {
+                  const pt0 = node.trail[tIdx - 1];
+                  const pt1 = node.trail[tIdx];
+                  const segRatio = tIdx / node.trail.length;
+                  ctx.save();
+                  ctx.beginPath();
+                  ctx.moveTo(pt0.x, pt0.y);
+                  ctx.lineTo(pt1.x, pt1.y);
+                  ctx.strokeStyle = node.color;
+                  ctx.globalAlpha = alpha * segRatio * 0.75;
+                  ctx.lineWidth = node.size * segRatio * 1.1;
+                  ctx.lineCap = "round";
+                  ctx.stroke();
+                  ctx.restore();
+                }
+              }
+
+              ctx.save();
+              ctx.translate(x, y);
+              ctx.rotate(ang);
+              ctx.fillStyle = node.color;
+              ctx.shadowColor = node.color;
+              ctx.shadowBlur = 10;
+              ctx.globalAlpha = alpha;
+              ctx.fillRect(-node.size * 1.1, -node.size * 0.5, node.size * 2.2, node.size);
+              ctx.restore();
+            }
+          }
+
+          if (!heroTriggered && elapsed >= gatherPhase + 220) {
+            heroTriggered = true;
+            document.body.classList.remove("intro-dark", "intro-lock");
+            document.body.classList.add("bp-active");
+            const heroTargets = Array.from(document.querySelectorAll("header [data-bp-target], .hero [data-bp-target]"));
+            enqueueBlueprintScan(heroTargets, 1750, cx, cy);
+            updateScrollAssembly();
+          }
+
+          activeBeams = activeBeams.filter((b) => now < b.start + b.duration);
+          for (const beam of activeBeams) {
+            if (now < beam.start) continue;
+            const bt = (now - beam.start) / beam.duration;
+            const bAlpha = bt < 0.25 ? bt / 0.25 : Math.max(0, 1 - (bt - 0.25) / 0.75);
+            const rect = beam.el.getBoundingClientRect();
+            if (rect.width <= 0 || rect.height <= 0) continue;
+
+            const tx = rect.left + rect.width * 0.5;
+            const ty = rect.top + rect.height * 0.5;
+            const prog = Math.min(1, bt * 1.45);
+            const curX = beam.ox + (tx - beam.ox) * prog;
+            const curY = beam.oy + (ty - beam.oy) * prog;
+
+            ctx.save();
+            const beamGrad = ctx.createLinearGradient(beam.ox, beam.oy, curX, curY);
+            beamGrad.addColorStop(0, "rgba(56, 189, 248, 0)");
+            beamGrad.addColorStop(0.6, beam.color);
+            beamGrad.addColorStop(1, "#ffffff");
+
+            ctx.strokeStyle = beamGrad;
+            ctx.globalAlpha = bAlpha * 0.85;
+            ctx.lineWidth = 1.6;
+            ctx.beginPath();
+            ctx.moveTo(beam.ox, beam.oy);
+            ctx.lineTo(curX, curY);
+            ctx.stroke();
+
+            ctx.fillStyle = "#ffffff";
+            ctx.shadowColor = beam.color;
+            ctx.shadowBlur = 12;
+            ctx.beginPath();
+            ctx.arc(curX, curY, 3, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+          }
+
+          activeBlueprints = activeBlueprints.filter((item) => now < item.start + item.duration);
+
+          for (const item of activeBlueprints) {
+            if (now < item.start) continue;
+            const t = (now - item.start) / item.duration;
+            const alpha = t < 0.2 ? t / 0.2 : Math.max(0, 1 - (t - 0.2) / 0.8);
+            const rect = item.el.getBoundingClientRect();
+            if (rect.width <= 0 || rect.height <= 0) continue;
+
+            ctx.save();
+            ctx.globalAlpha = alpha * 0.85;
+
+            ctx.strokeStyle = item.color;
+            ctx.lineWidth = 0.8;
+            ctx.setLineDash([4, 4]);
+
+            const extendX = 95 * (1 - t * 0.5);
+            ctx.beginPath();
+            ctx.moveTo(Math.max(0, rect.left - extendX), rect.top);
+            ctx.lineTo(Math.min(window.innerWidth, rect.right + extendX), rect.top);
+            ctx.moveTo(Math.max(0, rect.left - extendX), rect.bottom);
+            ctx.lineTo(Math.min(window.innerWidth, rect.right + extendX), rect.bottom);
+            ctx.stroke();
+
+            const extendY = 75 * (1 - t * 0.5);
+            ctx.beginPath();
+            ctx.moveTo(rect.left, Math.max(0, rect.top - extendY));
+            ctx.lineTo(rect.left, Math.min(window.innerHeight, rect.bottom + extendY));
+            ctx.moveTo(rect.right, Math.max(0, rect.top - extendY));
+            ctx.lineTo(rect.right, Math.min(window.innerHeight, rect.bottom + extendY));
+            ctx.stroke();
+
+            ctx.setLineDash([]);
+
+            const s = 4.5;
+            ctx.fillStyle = item.color;
+            ctx.fillRect(rect.left - s / 2, rect.top - s / 2, s, s);
+            ctx.fillRect(rect.right - s / 2, rect.top - s / 2, s, s);
+            ctx.fillRect(rect.left - s / 2, rect.bottom - s / 2, s, s);
+            ctx.fillRect(rect.right - s / 2, rect.bottom - s / 2, s, s);
+
+            if (t < 0.78) {
+              const dimText = `${Math.round(rect.width)}×${Math.round(rect.height)}px`;
+              ctx.font = '600 10px "JetBrains Mono", monospace';
+              const textW = ctx.measureText(dimText).width + 8;
+              const badgeX = rect.left;
+              const badgeY = Math.max(14, rect.top - 16);
+
+              ctx.fillStyle = "rgba(8, 10, 15, 0.88)";
+              ctx.fillRect(badgeX, badgeY, textW, 14);
+              ctx.strokeStyle = item.color;
+              ctx.lineWidth = 0.7;
+              ctx.strokeRect(badgeX, badgeY, textW, 14);
+
+              ctx.fillStyle = item.color;
+              ctx.fillText(dimText, badgeX + 4, badgeY + 10.5);
+            }
+
+            if (t < 0.65) {
+              const sliceCount = 4;
+              for (let i = 0; i < sliceCount; i++) {
+                const sliceY = rect.top + ((i + 0.5) / sliceCount) * rect.height;
+                const offset = Math.sin(t * 14 + i * 2.1) * (28 * (1 - t));
+                const barW = rect.width * (0.35 + (i % 2) * 0.25);
+                const barX = rect.left + (rect.width - barW) * 0.5 + offset;
+
+                ctx.fillStyle = i % 2 === 0 ? "rgba(56, 189, 248, 0.28)" : "rgba(244, 63, 94, 0.24)";
+                ctx.fillRect(barX, sliceY - 2, barW, 3);
+              }
+            }
+
+            ctx.restore();
+          }
+
+          renderCursorConvergence(now);
+
+          animRafId = requestAnimationFrame(renderLoop);
+        }
+
+        animRafId = requestAnimationFrame(renderLoop);
+      }
+
+      // Cập nhật tiến độ cuộn và kích hoạt lắp ráp từng mục tới đâu chạy tới đó
+      const progressBar = document.getElementById("assembly-progress");
+      const scrollItems = Array.from(document.querySelectorAll(".scroll-node"));
+      const circuitLines = Array.from(document.querySelectorAll("[data-scroll-line]"));
+      const bpSections = Array.from(document.querySelectorAll("[data-bp-section]"));
+
+      function updateScrollAssembly() {
+        const vh = Math.max(1, window.innerHeight);
+        const vw = Math.max(1, window.innerWidth);
+        const docScroll = window.scrollY || window.pageYOffset || 0;
+        const maxScroll = Math.max(1, document.documentElement.scrollHeight - vh);
+
+        if (progressBar) {
+          progressBar.style.width = `${Math.max(0, Math.min(1, docScroll / maxScroll)) * 100}%`;
+        }
+
+        if (!motionEnabled) {
+          scrollItems.forEach((el) => el.classList.add("is-assembled"));
+          circuitLines.forEach((line) => line.style.setProperty("--line-scale", "1"));
+          return;
+        }
+
+        for (const line of circuitLines) {
+          const rect = line.getBoundingClientRect();
+          const raw = Math.max(0, Math.min(1, (vh * 0.95 - rect.top) / (vh * 0.35)));
+          line.style.setProperty("--line-scale", raw.toFixed(3));
+        }
+
+        for (const sec of bpSections) {
+          const rect = sec.getBoundingClientRect();
+          if (rect.top < vh * 0.88 && !sec.dataset.bpScanned) {
+            sec.dataset.bpScanned = "1";
+            const targets = Array.from(sec.querySelectorAll("[data-bp-target]"));
+            enqueueBlueprintScan(targets, 1300, vw * 0.5, vh * 0.72);
+          }
+        }
+
+        for (const el of scrollItems) {
+          const rect = el.getBoundingClientRect();
+          if (rect.top < vh * 0.93) {
+            el.classList.add("is-assembled");
+          }
+        }
+      }
+
+      // Vòng lặp tự động cuộn mượt mà, tự tiếp tục và lặp chu kỳ
+      const autoScrollBtn = document.getElementById("auto-scroll-btn");
+      function autoScrollLoop(now) {
+        if (
+          autoScrollEnabled &&
+          !document.body.classList.contains("intro-lock") &&
+          now >= autoScrollPauseUntil
+        ) {
+          const maxScroll = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+          const currentScroll = window.scrollY || window.pageYOffset || 0;
+
+          if (maxScroll > 20) {
+            if (autoScrollDirection === 1) {
+              if (currentScroll >= maxScroll - 2) {
+                autoScrollDirection = -1;
+                autoScrollPauseUntil = now + 1800;
+              } else {
+                window.scrollBy(0, 1.35);
+              }
+            } else {
+              if (currentScroll <= 2) {
+                autoScrollDirection = 1;
+                autoScrollPauseUntil = now + 1400;
+              } else {
+                window.scrollBy(0, -3.2);
+              }
+            }
+          }
+        }
+        requestAnimationFrame(autoScrollLoop);
+      }
+      requestAnimationFrame(autoScrollLoop);
+
+      // Tạm nhường quyền cuộn 1.5s khi người dùng thao tác thủ công
+      ["wheel", "touchstart"].forEach((evtName) => {
+        window.addEventListener(
+          evtName,
+          () => {
+            if (autoScrollEnabled) {
+              autoScrollPauseUntil = performance.now() + 1500;
+            }
+          },
+          { passive: true }
+        );
+      });
+
+      if (autoScrollBtn) {
+        autoScrollBtn.addEventListener("click", () => {
+          autoScrollEnabled = !autoScrollEnabled;
+          autoScrollBtn.textContent = autoScrollEnabled ? "Tự động cuộn: Bật" : "Tự động cuộn: Tắt";
+          autoScrollBtn.classList.toggle("btn-active-scroll", autoScrollEnabled);
+          if (autoScrollEnabled) {
+            autoScrollPauseUntil = 0;
+            showToast("Đã bật tự động cuộn");
+          } else {
+            showToast("Đã tắt tự động cuộn");
+          }
+        });
+      }
+
+      let scrollTicking = false;
+      window.addEventListener(
+        "scroll",
+        () => {
+          if (!scrollTicking) {
+            scrollTicking = true;
+            requestAnimationFrame(() => {
+              updateScrollAssembly();
+              scrollTicking = false;
+            });
+          }
+        },
+        { passive: true }
+      );
+
+      window.addEventListener("resize", () => {
+        resizeCanvas();
+        updateScrollAssembly();
+      });
+
+      // Các nhãn kỹ thuật trôi nhẹ nền
+      const stage = document.getElementById("ambient-stage");
+      const chipSpecs = [
+        { text: "UI", color: "#38bdf8" },
+        { text: "DOM", color: "#f43f5e" },
+        { text: "CSS", color: "#f59e0b" },
+        { text: "JS", color: "#22c55e" },
+        { text: "API", color: "#818cf8" },
+        { text: "GRID", color: "#ec4899" }
+      ];
+      const chips = [];
+
+      if (stage) {
+        for (let i = 0; i < 12; i++) {
+          const spec = chipSpecs[i % chipSpecs.length];
+          const el = document.createElement("div");
+          el.className = "floating-chip";
+          el.innerHTML = `<i style="background:${spec.color}"></i><span>${spec.text}</span>`;
+          const chip = {
+            el,
+            x: Math.random() * Math.max(320, window.innerWidth),
+            y: Math.random() * Math.max(480, window.innerHeight),
+            vx: (Math.random() - 0.5) * 0.35,
+            vy: (Math.random() - 0.5) * 0.35,
+            rot: (Math.random() - 0.5) * 12,
+            vRot: (Math.random() - 0.5) * 0.12
+          };
+          stage.appendChild(el);
+          chips.push(chip);
+        }
+      }
+
+      function animateChips() {
+        if (motionEnabled && chips.length > 0) {
+          const w = Math.max(320, window.innerWidth);
+          const h = Math.max(480, window.innerHeight);
+          for (const c of chips) {
+            c.x += c.vx;
+            c.y += c.vy;
+            c.rot += c.vRot;
+
+            if (c.x < -60) c.x = w + 40;
+            if (c.x > w + 60) c.x = -40;
+            if (c.y < -40) c.y = h + 30;
+            if (c.y > h + 40) c.y = -30;
+
+            c.el.style.transform = `translate3d(${c.x}px, ${c.y}px, 0) rotate(${c.rot}deg)`;
+          }
+        }
+        requestAnimationFrame(animateChips);
+      }
+      animateChips();
+
+      // Nút phát lại và bật/tắt hiệu ứng
+      const replayBtn = document.getElementById("replay-intro");
+      const toggleBtn = document.getElementById("toggle-motion");
+
+      if (replayBtn) {
+        replayBtn.addEventListener("click", () => {
+          window.scrollTo({ top: 0, behavior: "smooth" });
+          autoScrollDirection = 1;
+          autoScrollPauseUntil = 0;
+          if (!motionEnabled) {
+            motionEnabled = true;
+            if (stage) stage.style.opacity = "1";
+            if (toggleBtn) toggleBtn.textContent = "Hiệu ứng: Bật";
+          }
+          runOpeningBlueprint();
+        });
+      }
+
+      if (toggleBtn) {
+        toggleBtn.addEventListener("click", () => {
+          motionEnabled = !motionEnabled;
+          if (stage) stage.style.opacity = motionEnabled ? "1" : "0";
+          toggleBtn.textContent = motionEnabled ? "Hiệu ứng: Bật" : "Hiệu ứng: Tắt";
+          if (motionEnabled) {
+            runOpeningBlueprint();
+          } else {
+            cancelAnimationFrame(animRafId);
+            if (ctx) ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+            document.body.classList.remove("intro-lock", "intro-dark");
+            document.body.classList.add("no-motion");
+            document.querySelectorAll("[data-scroll-line]").forEach((l) => l.style.setProperty("--line-scale", "1"));
+          }
+        });
+      }
+
+      runOpeningBlueprint();
+    } catch (err) {
+      document.body.classList.remove("intro-lock", "intro-dark");
+      document.body.classList.add("no-motion");
+    }
+  </script>
+</body>
+</html>
